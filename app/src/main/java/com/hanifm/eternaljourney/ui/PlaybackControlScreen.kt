@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hanifm.eternaljourney.ui.viewmodel.PlaybackViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaybackControlScreen(
     viewModel: PlaybackViewModel = viewModel()

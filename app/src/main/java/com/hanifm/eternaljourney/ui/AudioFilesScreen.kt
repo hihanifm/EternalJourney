@@ -1,5 +1,6 @@
 package com.hanifm.eternaljourney.ui
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,18 +14,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.hanifm.eternaljourney.audio.AudioFileManager
 import com.hanifm.eternaljourney.ui.viewmodel.AudioFilesViewModel
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioFilesScreen(
     viewModel: AudioFilesViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val audioFileManager = AudioFileManager(context)
     val bundledFiles by viewModel.bundledAudioFiles.collectAsState()
     val userFiles by viewModel.userAudioFiles.collectAsState()
     val defaultAudioFile by viewModel.defaultAudioFile.collectAsState()
@@ -94,7 +101,20 @@ fun AudioFilesScreen(
                             file = file,
                             isDefault = file.fileName == defaultAudioFile,
                             onSetDefault = { viewModel.setDefaultAudioFile(file.fileName) },
-                            onDelete = null // Can't delete bundled files
+                            onDelete = null, // Can't delete bundled files
+                            onPlay = {
+                                scope.launch {
+                                    val playableUri = audioFileManager.getPlayableUri(file)
+                                    playableUri?.let { uri ->
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(uri, "audio/*")
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        val chooser = Intent.createChooser(intent, "Play audio with")
+                                        context.startActivity(chooser)
+                                    }
+                                }
+                            }
                         )
                     }
                 }
@@ -127,6 +147,19 @@ fun AudioFilesScreen(
                                     onSuccess = { },
                                     onError = { }
                                 )
+                            },
+                            onPlay = {
+                                scope.launch {
+                                    val playableUri = audioFileManager.getPlayableUri(file)
+                                    playableUri?.let { uri ->
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(uri, "audio/*")
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        val chooser = Intent.createChooser(intent, "Play audio with")
+                                        context.startActivity(chooser)
+                                    }
+                                }
                             }
                         )
                     }
@@ -141,7 +174,8 @@ fun AudioFileItem(
     file: com.hanifm.eternaljourney.audio.AudioFileInfo,
     isDefault: Boolean,
     onSetDefault: () -> Unit,
-    onDelete: (() -> Unit)?
+    onDelete: (() -> Unit)?,
+    onPlay: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -161,7 +195,11 @@ fun AudioFileItem(
                 modifier = Modifier.size(40.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(enabled = onPlay != null) { onPlay?.invoke() }
+            ) {
                 Text(
                     text = file.displayName,
                     style = MaterialTheme.typography.bodyLarge

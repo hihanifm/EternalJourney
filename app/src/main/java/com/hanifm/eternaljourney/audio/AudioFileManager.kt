@@ -3,8 +3,10 @@ package com.hanifm.eternaljourney.audio
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import androidx.core.content.FileProvider
 import com.hanifm.eternaljourney.data.PreferencesManager
+import com.hanifm.eternaljourney.util.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -12,22 +14,28 @@ import java.io.FileOutputStream
 import java.io.InputStream
 
 class AudioFileManager(private val context: Context) {
+    private val TAG = "${Constants.LOG_TAG}/AudioFileManager"
     private val preferencesManager = PreferencesManager(context)
     private val userAudioDir: File = File(context.filesDir, "audio")
 
     init {
+        Log.d(TAG, "AudioFileManager initialized, userAudioDir=${userAudioDir.absolutePath}")
         // Create user audio directory if it doesn't exist
         if (!userAudioDir.exists()) {
             userAudioDir.mkdirs()
+            Log.d(TAG, "Created user audio directory")
         }
     }
 
     suspend fun getBundledAudioFiles(): List<AudioFileInfo> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "getBundledAudioFiles: Loading bundled audio files")
         val files = mutableListOf<AudioFileInfo>()
         try {
             val assets = context.assets.list("audio")
+            Log.d(TAG, "Found ${assets?.size ?: 0} files in assets/audio")
             assets?.forEach { fileName ->
                 if (isAudioFile(fileName)) {
+                    Log.d(TAG, "Adding bundled audio file: $fileName")
                     files.add(
                         AudioFileInfo(
                             fileName = fileName,
@@ -36,12 +44,17 @@ class AudioFileManager(private val context: Context) {
                             uri = getBundledAudioUri(fileName)
                         )
                     )
+                } else {
+                    Log.d(TAG, "Skipping non-audio file: $fileName")
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error loading bundled audio files", e)
             // assets/audio directory doesn't exist or can't be read
         }
-        files.sortedBy { it.displayName }
+        val sortedFiles = files.sortedBy { it.displayName }
+        Log.d(TAG, "getBundledAudioFiles: Returning ${sortedFiles.size} bundled files")
+        sortedFiles
     }
 
     suspend fun getUserAudioFiles(): List<AudioFileInfo> = withContext(Dispatchers.IO) {
@@ -105,6 +118,33 @@ class AudioFileManager(private val context: Context) {
         }
     }
 
+    suspend fun getPlayableUri(audioFileInfo: AudioFileInfo): Uri? = withContext(Dispatchers.IO) {
+        Log.d(TAG, "getPlayableUri: Getting playable URI for ${audioFileInfo.fileName}, bundled=${audioFileInfo.isBundled}")
+        try {
+            if (audioFileInfo.isBundled) {
+                // For bundled files, copy to temp file and return FileProvider URI
+                val tempFile = File(context.cacheDir, "temp_play_${audioFileInfo.fileName}")
+                Log.d(TAG, "Copying bundled file to temp: ${tempFile.absolutePath}")
+                context.assets.open("audio/${audioFileInfo.fileName}").use { input ->
+                    FileOutputStream(tempFile).use { output ->
+                        val bytesCopied = input.copyTo(output)
+                        Log.d(TAG, "Copied $bytesCopied bytes to temp file")
+                    }
+                }
+                val uri = getFileProviderUri(tempFile)
+                Log.d(TAG, "Created playable URI: $uri")
+                uri
+            } else {
+                // For user files, return the existing FileProvider URI
+                Log.d(TAG, "Using existing URI for user file: ${audioFileInfo.uri}")
+                audioFileInfo.uri
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting playable URI", e)
+            null
+        }
+    }
+
     fun getAudioFileUri(fileName: String, isBundled: Boolean): Uri? {
         return if (isBundled) {
             getBundledAudioUri(fileName)
@@ -140,7 +180,7 @@ class AudioFileManager(private val context: Context) {
     }
 
     private fun isAudioFile(fileName: String): Boolean {
-        val extension = getFileExtension(fileName).lowercase()
+        val extension = getFileExtension(fileName).lowercase().removePrefix(".")
         return extension in listOf("mp3", "m4a", "wav", "ogg", "aac", "flac", "mp4")
     }
 
