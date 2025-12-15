@@ -5,8 +5,8 @@
 -renamesourcefileattribute SourceFile
 
 # Keep data classes
--keep class com.hanifm.eternaljourney.audio.AudioFileInfo { *; }
--keep class com.hanifm.eternaljourney.bluetooth.BluetoothDeviceInfo { *; }
+-keep class com.dito.travelbuddy.audio.AudioFileInfo { *; }
+-keep class com.dito.travelbuddy.bluetooth.BluetoothDeviceInfo { *; }
 
 # Keep Parcelable implementations
 -keep class * implements android.os.Parcelable {
@@ -18,11 +18,11 @@
 -dontwarn androidx.media3.**
 
 # Keep service classes
--keep class com.hanifm.eternaljourney.service.** { *; }
--keep class com.hanifm.eternaljourney.receiver.** { *; }
+-keep class com.dito.travelbuddy.service.** { *; }
+-keep class com.dito.travelbuddy.receiver.** { *; }
 
 # Keep ViewModels
--keep class com.hanifm.eternaljourney.ui.viewmodel.** { *; }
+-keep class com.dito.travelbuddy.ui.viewmodel.** { *; }
 
 # Keep all logs for troubleshooting
 # Debug logs are kept to help diagnose issues in production

@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.hanifm.eternaljourney"
+    namespace = "com.dito.travelbuddy"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.hanifm.eternaljourney"
+        applicationId = "com.dito.travelbuddy"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
