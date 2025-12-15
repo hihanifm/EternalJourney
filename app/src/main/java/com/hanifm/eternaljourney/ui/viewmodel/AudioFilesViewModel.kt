@@ -37,6 +37,8 @@ class AudioFilesViewModel(application: Application) : AndroidViewModel(applicati
             try {
                 _bundledAudioFiles.value = audioFileManager.getBundledAudioFiles()
                 _userAudioFiles.value = audioFileManager.getUserAudioFiles()
+                // Reload default in case it was automatically set
+                loadDefaultAudioFile()
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {

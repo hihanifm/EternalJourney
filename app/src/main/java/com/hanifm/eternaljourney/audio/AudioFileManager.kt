@@ -54,6 +54,10 @@ class AudioFileManager(private val context: Context) {
         }
         val sortedFiles = files.sortedBy { it.displayName }
         Log.d(TAG, "getBundledAudioFiles: Returning ${sortedFiles.size} bundled files")
+        
+        // Ensure default is set if none exists
+        ensureDefaultAudioFile(sortedFiles)
+        
         sortedFiles
     }
 
@@ -164,6 +168,23 @@ class AudioFileManager(private val context: Context) {
 
     fun setDefaultAudioFile(fileName: String?) {
         preferencesManager.setDefaultAudioFile(fileName)
+        Log.d(TAG, "setDefaultAudioFile: Set default to $fileName")
+    }
+    
+    /**
+     * Ensures a default audio file is set. If no default exists, sets the first bundled audio file as default.
+     */
+    private suspend fun ensureDefaultAudioFile(bundledFiles: List<AudioFileInfo>) {
+        val currentDefault = getDefaultAudioFile()
+        if (currentDefault == null && bundledFiles.isNotEmpty()) {
+            val firstBundledFile = bundledFiles.first()
+            Log.i(TAG, "No default audio file set, setting first bundled file as default: ${firstBundledFile.fileName}")
+            setDefaultAudioFile(firstBundledFile.fileName)
+        } else if (currentDefault != null) {
+            Log.d(TAG, "Default audio file already set: $currentDefault")
+        } else {
+            Log.d(TAG, "No bundled audio files available to set as default")
+        }
     }
 
     private fun getBundledAudioUri(fileName: String): Uri {
