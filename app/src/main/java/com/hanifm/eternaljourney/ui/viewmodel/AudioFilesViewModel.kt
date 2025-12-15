@@ -40,7 +40,7 @@ class AudioFilesViewModel(application: Application) : AndroidViewModel(applicati
                 // Reload default in case it was automatically set
                 loadDefaultAudioFile()
             } catch (e: Exception) {
-                e.printStackTrace()
+                // Error loading audio files - handled silently
             } finally {
                 _isLoading.value = false
             }

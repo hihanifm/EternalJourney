@@ -20,16 +20,15 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import android.util.Log
 import android.widget.Toast
 import com.hanifm.eternaljourney.MainActivity
 import com.hanifm.eternaljourney.R
 import com.hanifm.eternaljourney.audio.AudioFileManager
-import com.hanifm.eternaljourney.util.Constants
+import com.hanifm.eternaljourney.util.LogUtils
 import java.io.File
 
 class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusChangeListener {
-    private val TAG = "${Constants.LOG_TAG}/AudioService"
+    private val TAG = "/AudioService"
     private var mediaSession: MediaSession? = null
     private var exoPlayer: ExoPlayer? = null
     private val binder = LocalBinder()
@@ -53,35 +52,35 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "onCreate: Service created")
+        LogUtils.d(TAG, "onCreate: Service created")
         audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         createNotificationChannel()
         initializePlayer()
-        Log.d(TAG, "onCreate: Service initialized")
+        LogUtils.d(TAG, "onCreate: Service initialized")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: action=${intent?.action}, startId=$startId")
+        LogUtils.d(TAG, "onStartCommand: action=${intent?.action}, startId=$startId")
         when (intent?.action) {
             ACTION_PLAY -> {
                 val audioUri = intent.getStringExtra(EXTRA_AUDIO_URI)
-                Log.d(TAG, "ACTION_PLAY received, URI: $audioUri")
+                LogUtils.d(TAG, "ACTION_PLAY received, URI: $audioUri")
                 if (audioUri != null) {
                     playAudio(Uri.parse(audioUri))
                 } else {
-                    Log.w(TAG, "ACTION_PLAY received but no URI provided")
+                    LogUtils.w(TAG, "ACTION_PLAY received but no URI provided")
                 }
             }
             ACTION_PAUSE -> {
-                Log.d(TAG, "ACTION_PAUSE received")
+                LogUtils.d(TAG, "ACTION_PAUSE received")
                 pause()
             }
             ACTION_STOP -> {
-                Log.d(TAG, "ACTION_STOP received")
+                LogUtils.d(TAG, "ACTION_STOP received")
                 stopPlayback()
             }
             else -> {
-                Log.d(TAG, "Unknown action: ${intent?.action}")
+                LogUtils.d(TAG, "Unknown action: ${intent?.action}")
             }
         }
         return START_STICKY
@@ -97,63 +96,62 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
     }
 
     private fun initializePlayer() {
-        Log.d(TAG, "initializePlayer: Creating ExoPlayer")
+        LogUtils.d(TAG, "initializePlayer: Creating ExoPlayer")
         exoPlayer = ExoPlayer.Builder(this).build().apply {
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
-                    Log.d(TAG, "Playback state changed: $playbackState")
+                    LogUtils.d(TAG, "Playback state changed: $playbackState")
                     updateNotification()
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    Log.d(TAG, "Playing state changed: isPlaying=$isPlaying")
+                    LogUtils.d(TAG, "Playing state changed: isPlaying=$isPlaying")
                     updateNotification()
                 }
             })
         }
 
         mediaSession = MediaSession.Builder(this, exoPlayer!!).build()
-        Log.d(TAG, "MediaSession created")
+        LogUtils.d(TAG, "MediaSession created")
         startForeground(NOTIFICATION_ID, createNotification())
-        Log.d(TAG, "Service started in foreground")
+        LogUtils.d(TAG, "Service started in foreground")
     }
 
     fun playAudio(uri: Uri) {
-        Log.i(TAG, "playAudio: Starting playback, URI=$uri")
+        LogUtils.i(TAG, "playAudio: Starting playback, URI=$uri")
         requestAudioFocus()
         
         val mediaItem = try {
             if (uri.scheme == "asset") {
-                Log.d(TAG, "Handling asset URI")
-                // Handle asset files - copy to temp file for ExoPlayer
+                LogUtils.d(TAG, "Handling asset URI")
                 val fileName = uri.pathSegments.lastOrNull()
-                Log.d(TAG, "Asset file name: $fileName")
+                LogUtils.d(TAG, "Asset file name: $fileName")
                 if (fileName == null) {
-                    Log.e(TAG, "No file name in asset URI")
+                    LogUtils.e(TAG, "No file name in asset URI")
                     Toast.makeText(this, "Invalid audio file", Toast.LENGTH_SHORT).show()
                     return
                 }
                 val assetUri = createAssetUri(fileName)
                 if (assetUri != Uri.EMPTY) {
-                    Log.d(TAG, "Created asset URI: $assetUri")
+                    LogUtils.d(TAG, "Created asset URI: $assetUri")
                     MediaItem.fromUri(assetUri)
                 } else {
-                    Log.e(TAG, "Failed to create asset URI")
+                    LogUtils.e(TAG, "Failed to create asset URI")
                     Toast.makeText(this, "Failed to load audio file", Toast.LENGTH_SHORT).show()
                     return
                 }
             } else {
-                Log.d(TAG, "Handling regular URI")
+                LogUtils.d(TAG, "Handling regular URI")
                 MediaItem.fromUri(uri)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error creating MediaItem", e)
+            LogUtils.e(TAG, "Error creating MediaItem", e)
             Toast.makeText(this, "Error loading audio: ${e.message}", Toast.LENGTH_SHORT).show()
             return
         }
 
         exoPlayer?.apply {
-            Log.d(TAG, "Setting media item and starting playback")
+            LogUtils.d(TAG, "Setting media item and starting playback")
             setMediaItem(mediaItem)
             prepare()
             play()
@@ -164,51 +162,49 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
                     .build(),
                 true
             )
-            Log.i(TAG, "Playback started successfully")
+            LogUtils.i(TAG, "Playback started successfully")
             Toast.makeText(this@AudioPlaybackService, "Playing audio", Toast.LENGTH_SHORT).show()
         } ?: run {
-            Log.e(TAG, "ExoPlayer is null, cannot play audio")
+            LogUtils.e(TAG, "ExoPlayer is null, cannot play audio")
             Toast.makeText(this, "Player not initialized", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun createAssetUri(fileName: String): Uri {
-        Log.d(TAG, "createAssetUri: Copying asset to temp file: $fileName")
-        // Copy asset to temp file and return file URI
+        LogUtils.d(TAG, "createAssetUri: Copying asset to temp file: $fileName")
         return try {
             val tempFile = File(cacheDir, "temp_audio_$fileName")
-            Log.d(TAG, "Temp file path: ${tempFile.absolutePath}")
-            // Always copy to ensure file is fresh
+            LogUtils.d(TAG, "Temp file path: ${tempFile.absolutePath}")
             assets.open("audio/$fileName").use { input ->
                 tempFile.outputStream().use { output ->
                     val bytesCopied = input.copyTo(output)
-                    Log.d(TAG, "Copied $bytesCopied bytes from asset to temp file")
+                    LogUtils.d(TAG, "Copied $bytesCopied bytes from asset to temp file")
                 }
             }
             val uri = Uri.fromFile(tempFile)
-            Log.d(TAG, "Created URI from temp file: $uri")
+            LogUtils.d(TAG, "Created URI from temp file: $uri")
             uri
         } catch (e: Exception) {
-            Log.e(TAG, "Error copying asset to temp file", e)
+            LogUtils.e(TAG, "Error copying asset to temp file", e)
             Uri.EMPTY
         }
     }
 
     fun pause() {
-        Log.d(TAG, "pause: Pausing playback")
+        LogUtils.d(TAG, "pause: Pausing playback")
         exoPlayer?.pause()
         Toast.makeText(this, "Playback paused", Toast.LENGTH_SHORT).show()
     }
 
     fun resume() {
-        Log.d(TAG, "resume: Resuming playback")
+        LogUtils.d(TAG, "resume: Resuming playback")
         requestAudioFocus()
         exoPlayer?.play()
         Toast.makeText(this, "Playback resumed", Toast.LENGTH_SHORT).show()
     }
 
     fun stopPlayback() {
-        Log.i(TAG, "stopPlayback: Stopping playback and service")
+        LogUtils.i(TAG, "stopPlayback: Stopping playback and service")
         exoPlayer?.stop()
         abandonAudioFocus()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -222,11 +218,11 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
 
     private fun requestAudioFocus() {
         if (hasAudioFocus) {
-            Log.d(TAG, "requestAudioFocus: Already has audio focus")
+            LogUtils.d(TAG, "requestAudioFocus: Already has audio focus")
             return
         }
 
-        Log.d(TAG, "requestAudioFocus: Requesting audio focus")
+        LogUtils.d(TAG, "requestAudioFocus: Requesting audio focus")
         val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setAudioAttributes(
@@ -248,16 +244,16 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
         }
 
         hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        Log.d(TAG, "requestAudioFocus: Result=${if (hasAudioFocus) "GRANTED" else "DENIED"}")
+        LogUtils.d(TAG, "requestAudioFocus: Result=${if (hasAudioFocus) "GRANTED" else "DENIED"}")
     }
 
     private fun abandonAudioFocus() {
         if (!hasAudioFocus) {
-            Log.d(TAG, "abandonAudioFocus: No audio focus to abandon")
+            LogUtils.d(TAG, "abandonAudioFocus: No audio focus to abandon")
             return
         }
 
-        Log.d(TAG, "abandonAudioFocus: Abandoning audio focus")
+        LogUtils.d(TAG, "abandonAudioFocus: Abandoning audio focus")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             audioFocusRequest?.let {
                 audioManager?.abandonAudioFocusRequest(it)
@@ -268,16 +264,16 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
             audioManager?.abandonAudioFocus(this)
         }
         hasAudioFocus = false
-        Log.d(TAG, "abandonAudioFocus: Audio focus abandoned")
+        LogUtils.d(TAG, "abandonAudioFocus: Audio focus abandoned")
     }
 
     override fun onAudioFocusChange(focusChange: Int) {
-        Log.d(TAG, "onAudioFocusChange: focusChange=$focusChange")
+        LogUtils.d(TAG, "onAudioFocusChange: focusChange=$focusChange")
         when (focusChange) {
             AudioManager.AUDIOFOCUS_GAIN -> {
-                Log.d(TAG, "Audio focus gained")
+                LogUtils.d(TAG, "Audio focus gained")
                 if (wasPlayingWhenFocusLost) {
-                    Log.d(TAG, "Resuming playback after focus gain")
+                    LogUtils.d(TAG, "Resuming playback after focus gain")
                     resume()
                 }
                 wasPlayingWhenFocusLost = false
@@ -285,12 +281,12 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                Log.d(TAG, "Audio focus lost (transient)")
+                LogUtils.d(TAG, "Audio focus lost (transient)")
                 wasPlayingWhenFocusLost = isPlaying()
                 pause()
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
-                Log.d(TAG, "Audio focus lost (permanent)")
+                LogUtils.d(TAG, "Audio focus lost (permanent)")
                 wasPlayingWhenFocusLost = isPlaying()
                 pause()
                 hasAudioFocus = false
@@ -374,14 +370,14 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy: Service being destroyed")
+        LogUtils.d(TAG, "onDestroy: Service being destroyed")
         super.onDestroy()
         exoPlayer?.release()
         exoPlayer = null
         mediaSession?.release()
         mediaSession = null
         abandonAudioFocus()
-        Log.d(TAG, "onDestroy: Service destroyed")
+        LogUtils.d(TAG, "onDestroy: Service destroyed")
     }
 }
 

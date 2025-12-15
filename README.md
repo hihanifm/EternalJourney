@@ -101,15 +101,11 @@ app/src/main/java/com/hanifm/eternaljourney/
 
 ## Logging
 
-The app uses comprehensive logging with the tag prefix `EJ-` for easy filtering:
+The app uses conditional logging that is only enabled in debug builds. Logs use the tag prefix `EJ-` for easy filtering:
 
 ```bash
-# View all app logs
+# View all app logs (debug builds only)
 adb logcat | grep "EJ-"
-
-# View specific component logs
-adb logcat | grep "EJ-/AudioService"
-adb logcat | grep "EJ-/BTReceiver"
 ```
 
 ## Permissions
@@ -138,13 +134,27 @@ The app requires the following permissions:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Building for Release
+
+To build a release APK:
+
+```bash
+./gradlew assembleRelease
+```
+
+The release APK will be located at `app/build/outputs/apk/release/app-release.apk`
+
+## Privacy
+
+This app:
+- Stores preferences locally on your device
+- Does not collect or transmit any personal data
+- Does not require internet connection
+- All audio files are stored locally
+
 ## License
 
 This project is open source and available for use.
-
-## Author
-
-Created by hanifm
 
 ## Support
 

@@ -3,10 +3,10 @@ package com.hanifm.eternaljourney.audio
 import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.util.Log
 import androidx.core.content.FileProvider
 import com.hanifm.eternaljourney.data.PreferencesManager
 import com.hanifm.eternaljourney.util.Constants
+import com.hanifm.eternaljourney.util.LogUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -14,28 +14,27 @@ import java.io.FileOutputStream
 import java.io.InputStream
 
 class AudioFileManager(private val context: Context) {
-    private val TAG = "${Constants.LOG_TAG}/AudioFileManager"
+    private val TAG = "/AudioFileManager"
     private val preferencesManager = PreferencesManager(context)
     private val userAudioDir: File = File(context.filesDir, "audio")
 
     init {
-        Log.d(TAG, "AudioFileManager initialized, userAudioDir=${userAudioDir.absolutePath}")
-        // Create user audio directory if it doesn't exist
+        LogUtils.d(TAG, "AudioFileManager initialized, userAudioDir=${userAudioDir.absolutePath}")
         if (!userAudioDir.exists()) {
             userAudioDir.mkdirs()
-            Log.d(TAG, "Created user audio directory")
+            LogUtils.d(TAG, "Created user audio directory")
         }
     }
 
     suspend fun getBundledAudioFiles(): List<AudioFileInfo> = withContext(Dispatchers.IO) {
-        Log.d(TAG, "getBundledAudioFiles: Loading bundled audio files")
+        LogUtils.d(TAG, "getBundledAudioFiles: Loading bundled audio files")
         val files = mutableListOf<AudioFileInfo>()
         try {
             val assets = context.assets.list("audio")
-            Log.d(TAG, "Found ${assets?.size ?: 0} files in assets/audio")
+            LogUtils.d(TAG, "Found ${assets?.size ?: 0} files in assets/audio")
             assets?.forEach { fileName ->
                 if (isAudioFile(fileName)) {
-                    Log.d(TAG, "Adding bundled audio file: $fileName")
+                    LogUtils.d(TAG, "Adding bundled audio file: $fileName")
                     files.add(
                         AudioFileInfo(
                             fileName = fileName,
@@ -45,19 +44,15 @@ class AudioFileManager(private val context: Context) {
                         )
                     )
                 } else {
-                    Log.d(TAG, "Skipping non-audio file: $fileName")
+                    LogUtils.d(TAG, "Skipping non-audio file: $fileName")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading bundled audio files", e)
-            // assets/audio directory doesn't exist or can't be read
+            LogUtils.e(TAG, "Error loading bundled audio files", e)
         }
         val sortedFiles = files.sortedBy { it.displayName }
-        Log.d(TAG, "getBundledAudioFiles: Returning ${sortedFiles.size} bundled files")
-        
-        // Ensure default is set if none exists
+        LogUtils.d(TAG, "getBundledAudioFiles: Returning ${sortedFiles.size} bundled files")
         ensureDefaultAudioFile(sortedFiles)
-        
         sortedFiles
     }
 
@@ -102,7 +97,7 @@ class AudioFileManager(private val context: Context) {
                 uri = getFileProviderUri(destinationFile)
             )
         } catch (e: Exception) {
-            e.printStackTrace()
+            LogUtils.e(TAG, "Error importing audio file", e)
             null
         }
     }
@@ -117,34 +112,32 @@ class AudioFileManager(private val context: Context) {
                 false
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            LogUtils.e(TAG, "Error deleting audio file", e)
             false
         }
     }
 
     suspend fun getPlayableUri(audioFileInfo: AudioFileInfo): Uri? = withContext(Dispatchers.IO) {
-        Log.d(TAG, "getPlayableUri: Getting playable URI for ${audioFileInfo.fileName}, bundled=${audioFileInfo.isBundled}")
+        LogUtils.d(TAG, "getPlayableUri: Getting playable URI for ${audioFileInfo.fileName}, bundled=${audioFileInfo.isBundled}")
         try {
             if (audioFileInfo.isBundled) {
-                // For bundled files, copy to temp file and return FileProvider URI
                 val tempFile = File(context.cacheDir, "temp_play_${audioFileInfo.fileName}")
-                Log.d(TAG, "Copying bundled file to temp: ${tempFile.absolutePath}")
+                LogUtils.d(TAG, "Copying bundled file to temp: ${tempFile.absolutePath}")
                 context.assets.open("audio/${audioFileInfo.fileName}").use { input ->
                     FileOutputStream(tempFile).use { output ->
                         val bytesCopied = input.copyTo(output)
-                        Log.d(TAG, "Copied $bytesCopied bytes to temp file")
+                        LogUtils.d(TAG, "Copied $bytesCopied bytes to temp file")
                     }
                 }
                 val uri = getFileProviderUri(tempFile)
-                Log.d(TAG, "Created playable URI: $uri")
+                LogUtils.d(TAG, "Created playable URI: $uri")
                 uri
             } else {
-                // For user files, return the existing FileProvider URI
-                Log.d(TAG, "Using existing URI for user file: ${audioFileInfo.uri}")
+                LogUtils.d(TAG, "Using existing URI for user file: ${audioFileInfo.uri}")
                 audioFileInfo.uri
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting playable URI", e)
+            LogUtils.e(TAG, "Error getting playable URI", e)
             null
         }
     }
@@ -168,22 +161,19 @@ class AudioFileManager(private val context: Context) {
 
     fun setDefaultAudioFile(fileName: String?) {
         preferencesManager.setDefaultAudioFile(fileName)
-        Log.d(TAG, "setDefaultAudioFile: Set default to $fileName")
+        LogUtils.d(TAG, "setDefaultAudioFile: Set default to $fileName")
     }
     
-    /**
-     * Ensures a default audio file is set. If no default exists, sets the first bundled audio file as default.
-     */
     private suspend fun ensureDefaultAudioFile(bundledFiles: List<AudioFileInfo>) {
         val currentDefault = getDefaultAudioFile()
         if (currentDefault == null && bundledFiles.isNotEmpty()) {
             val firstBundledFile = bundledFiles.first()
-            Log.i(TAG, "No default audio file set, setting first bundled file as default: ${firstBundledFile.fileName}")
+            LogUtils.i(TAG, "No default audio file set, setting first bundled file as default: ${firstBundledFile.fileName}")
             setDefaultAudioFile(firstBundledFile.fileName)
         } else if (currentDefault != null) {
-            Log.d(TAG, "Default audio file already set: $currentDefault")
+            LogUtils.d(TAG, "Default audio file already set: $currentDefault")
         } else {
-            Log.d(TAG, "No bundled audio files available to set as default")
+            LogUtils.d(TAG, "No bundled audio files available to set as default")
         }
     }
 

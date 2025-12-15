@@ -1,7 +1,6 @@
 package com.hanifm.eternaljourney.bluetooth
 
-import android.util.Log
-import com.hanifm.eternaljourney.util.Constants
+import com.hanifm.eternaljourney.util.LogUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,24 +16,21 @@ data class ConnectionStateChange(
 )
 
 object BluetoothConnectionStateManager {
-    private val TAG = "${Constants.LOG_TAG}/BTStateManager"
+    private val TAG = "/BTStateManager"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val _connectionStateChanged = MutableStateFlow<ConnectionStateChange?>(null)
     val connectionStateChanged: StateFlow<ConnectionStateChange?> = _connectionStateChanged.asStateFlow()
     
-    // Cache of known connection states (device address -> isConnected)
     private val connectionStateCache = mutableMapOf<String, Boolean>()
 
     fun notifyConnectionChanged(deviceAddress: String, isConnected: Boolean) {
-        Log.d(TAG, "notifyConnectionChanged: Device=$deviceAddress, isConnected=$isConnected")
-        // Update cache
+        LogUtils.d(TAG, "notifyConnectionChanged: Device=$deviceAddress, isConnected=$isConnected")
         connectionStateCache[deviceAddress] = isConnected
         _connectionStateChanged.value = ConnectionStateChange(deviceAddress, isConnected)
-        // Reset after a short delay to allow for new updates
         scope.launch {
             delay(100)
             _connectionStateChanged.value = null
-            Log.d(TAG, "Connection state reset")
+            LogUtils.d(TAG, "Connection state reset")
         }
     }
     
@@ -44,6 +40,6 @@ object BluetoothConnectionStateManager {
     
     fun clearCache() {
         connectionStateCache.clear()
-        Log.d(TAG, "Connection state cache cleared")
+        LogUtils.d(TAG, "Connection state cache cleared")
     }
 }
