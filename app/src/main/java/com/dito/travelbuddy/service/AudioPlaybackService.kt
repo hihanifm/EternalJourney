@@ -155,12 +155,15 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
             setMediaItem(mediaItem)
             prepare()
             play()
+            // Let this service manage audio focus explicitly via AudioManager.
+            // Disable ExoPlayer's built-in audio focus handling to avoid
+            // double-registration and immediate AUDIOFOCUS_LOSS callbacks.
             setAudioAttributes(
                 androidx.media3.common.AudioAttributes.Builder()
                     .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
                     .setUsage(androidx.media3.common.C.USAGE_MEDIA)
                     .build(),
-                true
+                /* handleAudioFocus = */ false
             )
             LogUtils.i(TAG, "Playback started successfully")
             Toast.makeText(this@AudioPlaybackService, "Playing audio", Toast.LENGTH_SHORT).show()
