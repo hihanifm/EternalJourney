@@ -98,6 +98,19 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
     private fun initializePlayer() {
         LogUtils.d(TAG, "initializePlayer: Creating ExoPlayer")
         exoPlayer = ExoPlayer.Builder(this).build().apply {
+            // Configure audio attributes once during initialization so that:
+            // - ExoPlayer uses the correct usage/content type for routing and volume.
+            // - Audio focus is managed exclusively by this service via AudioManager
+            //   (handleAudioFocus = false), avoiding double-registration and
+            //   unintended immediate AUDIOFOCUS_LOSS callbacks.
+            setAudioAttributes(
+                androidx.media3.common.AudioAttributes.Builder()
+                    .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                    .build(),
+                /* handleAudioFocus = */ false
+            )
+
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     LogUtils.d(TAG, "Playback state changed: $playbackState")
@@ -154,17 +167,9 @@ class AudioPlaybackService : MediaSessionService(), AudioManager.OnAudioFocusCha
             LogUtils.d(TAG, "Setting media item and starting playback")
             setMediaItem(mediaItem)
             prepare()
+            // Audio attributes (including handleAudioFocus = false) are already
+            // configured in initializePlayer(), so we can safely start playback now.
             play()
-            // Let this service manage audio focus explicitly via AudioManager.
-            // Disable ExoPlayer's built-in audio focus handling to avoid
-            // double-registration and immediate AUDIOFOCUS_LOSS callbacks.
-            setAudioAttributes(
-                androidx.media3.common.AudioAttributes.Builder()
-                    .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .setUsage(androidx.media3.common.C.USAGE_MEDIA)
-                    .build(),
-                /* handleAudioFocus = */ false
-            )
             LogUtils.i(TAG, "Playback started successfully")
             Toast.makeText(this@AudioPlaybackService, "Playing audio", Toast.LENGTH_SHORT).show()
         } ?: run {
